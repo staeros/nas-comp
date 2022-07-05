@@ -1,5 +1,6 @@
-import os
+import numpy as np
 import datetime
+from sklearn.metrics import log_loss, roc_auc_score, accuracy_score
 
 from keras.preprocessing.image import ImageDataGenerator
 from keras import layers, models
@@ -42,11 +43,26 @@ def run_resnet34(train_data, test_data):
     tensorboard_callback = TensorBoard(
         log_dir=f'./logs/ResNet34/{datetime.datetime.now().strftime("%Y%m%d%H%M%S")}')
 
-    model.fit(train_data, epochs=20, callbacks=[early_stopping, mcp_save, reduce_lr_loss, tensorboard_callback],
-              batch_size=16, validation_data=val_data)
+    model.fit(train_data, epochs=30, callbacks=[early_stopping, mcp_save, reduce_lr_loss, tensorboard_callback],
+              		  batch_size=16, validation_data=val_data)
+    
+    predicted_probs = model.predict(test_data)
+    predicted_labels = np.argmax(predicted_probs, axis=1)
+    labels = (test_data.class_indices)
+    # predicted_labels = dict((v, k) for k, v in labels.items())
+    # predictions_labels = [labels[k] for k in predicted_labels]
+    true_labels = test_data.classes
+    true_labels = np.array(true_labels)
+    print(f'Shape: {predicted_labels.shape} True:{true_labels.shape} ')
+    roc_auc = roc_auc_score(y_score=predicted_probs, y_true=true_labels, multi_class='ovr', average='macro')
+    acc = accuracy_score(y_true=true_labels, y_pred=predicted_labels)
+    logloss = log_loss(y_true=true_labels, y_pred=predicted_probs)
+    print(f'Composed ROC AUC is {round(roc_auc, 3)}')
+    print(f'Composed LOG LOSS is {round(logloss, 3)}')
+    print(f'Composed ACCURACY is {round(acc, 3)}') 
 
 
 if __name__ == '__main__':
-    train_data = '/home/staeros/nas-fedot/datasets/Blood-Cell-Classification/train'
-    test_data = '/home/staeros/nas-fedot/datasets/Blood-Cell-Classification/test'
+    train_data = '/home/hdd/datasets/Blood-Cell-Classification/train'
+    test_data = '/home/hdd/datasets/Blood-Cell-Classification/test'
     run_resnet34(train_data, test_data)
